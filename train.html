@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IndianRail - Train Search</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:#0a1628; color:#fff; min-height:100vh; }
+    nav {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 40px; background:linear-gradient(90deg,#003580,#0055b3);
+      box-shadow:0 2px 20px rgba(0,0,0,0.5); position:sticky; top:0; z-index:100;
+    }
+    .logo { display:flex; align-items:center; gap:12px; cursor:pointer; }
+    .logo span { font-size:1.4rem; font-weight:700; color:#fff; }
+    .logo small { display:block; font-size:0.7rem; color:#aad4ff; letter-spacing:2px; }
+    nav ul { list-style:none; display:flex; gap:24px; }
+    nav ul li a {
+      color:#cce0ff; text-decoration:none; font-size:0.95rem; font-weight:500;
+      padding:6px 12px; border-radius:6px; transition:all 0.3s;
+    }
+    nav ul li a:hover, nav ul li a.active { background:rgba(255,255,255,0.15); color:#fff; }
+    .btn-login {
+      background:linear-gradient(135deg,#ff6b00,#ff9500); color:#fff;
+      border:none; padding:9px 22px; border-radius:25px; font-weight:600;
+      cursor:pointer; font-size:0.9rem; transition:all 0.3s;
+    }
+    .btn-login:hover { transform:translateY(-2px); box-shadow:0 4px 15px rgba(255,107,0,0.5); }
+
+    .page-header {
+      background:linear-gradient(135deg,#001840,#003580);
+      padding:50px 40px 30px; text-align:center;
+    }
+    .page-header h1 { font-size:2.2rem; font-weight:800; margin-bottom:8px; }
+    .page-header p { color:#8ab4d8; font-size:1rem; }
+
+    .search-bar-container {
+      background:rgba(255,255,255,0.04); border-bottom:1px solid rgba(255,255,255,0.08);
+      padding:20px 40px;
+    }
+    .search-row { display:flex; gap:12px; max-width:900px; margin:0 auto; flex-wrap:wrap; }
+    .search-row input, .search-row select {
+      flex:1; min-width:160px; padding:12px 16px;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);
+      color:#fff; border-radius:10px; font-size:0.95rem; outline:none; transition:all 0.3s;
+    }
+    .search-row input:focus, .search-row select:focus { border-color:#0078ff; }
+    .search-row input::placeholder { color:#5a7a99; }
+    .search-row select option { background:#0d2050; }
+    .btn-go {
+      padding:12px 28px; background:linear-gradient(135deg,#ff6b00,#ff9500);
+      color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;
+      font-size:0.95rem; transition:all 0.3s; white-space:nowrap;
+    }
+    .btn-go:hover { transform:translateY(-2px); box-shadow:0 4px 15px rgba(255,107,0,0.4); }
+
+    .filters {
+      display:flex; gap:10px; padding:16px 40px; max-width:1200px; margin:0 auto;
+      flex-wrap:wrap; align-items:center;
+    }
+    .filter-label { color:#8ab4d8; font-size:0.85rem; margin-right:4px; }
+    .filter-btn {
+      padding:6px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.2);
+      background:transparent; color:#8ab4d8; cursor:pointer; font-size:0.85rem; transition:all 0.3s;
+    }
+    .filter-btn.active { background:#003580; color:#fff; border-color:#0055b3; }
+    .filter-btn:hover { border-color:#4da6ff; color:#4da6ff; }
+
+    .results-container { max-width:1200px; margin:0 auto; padding:10px 40px 60px; }
+    .results-header {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:12px 0 16px; border-bottom:1px solid rgba(255,255,255,0.07); margin-bottom:20px;
+    }
+    .results-count { color:#8ab4d8; font-size:0.9rem; }
+    .results-count span { color:#ff9500; font-weight:700; }
+
+    .train-card {
+      background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+      border-radius:16px; padding:22px 28px; margin-bottom:16px;
+      transition:all 0.3s; display:grid;
+      grid-template-columns:1fr auto 1fr auto auto; gap:20px; align-items:center;
+    }
+    .train-card:hover { border-color:#0078ff; background:rgba(0,120,255,0.06); transform:translateY(-2px); }
+    .train-name h3 { font-size:1rem; font-weight:700; margin-bottom:4px; }
+    .train-num { font-size:0.8rem; color:#8ab4d8; }
+    .train-type {
+      display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem;
+      font-weight:600; margin-top:6px; text-transform:uppercase; letter-spacing:1px;
+    }
+    .type-superfast { background:rgba(255,107,0,0.2); color:#ff9500; }
+    .type-express { background:rgba(0,120,255,0.2); color:#4da6ff; }
+    .type-rajdhani { background:rgba(150,0,255,0.2); color:#c87eff; }
+    .type-shatabdi { background:rgba(0,200,100,0.2); color:#00c864; }
+    .type-duronto { background:rgba(255,50,100,0.2); color:#ff6688; }
+    .type-garib { background:rgba(0,200,200,0.2); color:#00cccc; }
+    .type-vande { background:rgba(255,200,0,0.2); color:#ffc800; }
+    .type-intercity { background:rgba(100,200,255,0.2); color:#64c8ff; }
+
+    .time-block { text-align:center; }
+    .time-block .time { font-size:1.4rem; font-weight:800; }
+    .time-block .station { font-size:0.78rem; color:#8ab4d8; margin-top:4px; }
+    .time-block .day { font-size:0.72rem; color:#ff9500; }
+
+    .journey-mid { text-align:center; min-width:120px; }
+    .duration { font-size:0.85rem; color:#8ab4d8; margin-bottom:8px; }
+    .line-track { display:flex; align-items:center; gap:4px; justify-content:center; }
+    .dot { width:8px; height:8px; border-radius:50%; background:#0078ff; }
+    .line { flex:1; height:2px; background:linear-gradient(90deg,#0078ff,#00c864); }
+
+    .classes { display:flex; flex-direction:column; gap:6px; }
+    .class-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .class-badge {
+      padding:4px 12px; border-radius:8px; font-size:0.78rem; font-weight:600;
+      background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); cursor:pointer;
+      transition:all 0.2s; white-space:nowrap;
+    }
+    .class-badge:hover { background:rgba(0,120,255,0.2); border-color:#0078ff; }
+    .class-badge .seats { color:#00c864; font-size:0.7rem; margin-left:4px; }
+    .class-badge .price { color:#ff9500; font-size:0.7rem; margin-left:2px; }
+
+    .btn-book {
+      padding:12px 24px; background:linear-gradient(135deg,#003580,#0055b3);
+      color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer;
+      font-size:0.9rem; transition:all 0.3s; white-space:nowrap;
+    }
+    .btn-book:hover { transform:translateY(-2px); box-shadow:0 4px 15px rgba(0,83,179,0.5); }
+
+    .days-run { font-size:0.72rem; color:#8ab4d8; margin-top:6px; }
+    .days-run span { color:#4da6ff; }
+
+    footer {
+      background:rgba(0,0,0,0.4); border-top:1px solid rgba(255,255,255,0.06);
+      padding:20px 40px; text-align:center; color:#5a7a99; font-size:0.85rem;
+    }
+    @media(max-width:900px){
+      nav ul { display:none; }
+      .train-card { grid-template-columns:1fr 1fr; gap:14px; }
+      .btn-book { grid-column:span 2; }
+    }
+    @media(max-width:600px){
+      .results-container { padding:10px 16px 40px; }
+      .search-bar-container { padding:16px; }
+      .train-card { grid-template-columns:1fr; }
+      .btn-book { grid-column:unset; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo" onclick="window.location.href='index.html'">
+    <i class="fas fa-train" style="font-size:2rem;color:#ff9500;"></i>
+    <div><span>IndianRail</span><small>MINISTRY OF RAILWAYS</small></div>
+  </div>
+  <ul>
+    <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+    <li><a href="train.html" class="active"><i class="fas fa-train"></i> Trains</a></li>
+    <li><a href="booking.html"><i class="fas fa-ticket-alt"></i> Booking</a></li>
+    <li><a href="pnr.html"><i class="fas fa-search"></i> PNR Status</a></li>
+  </ul>
+  <button class="btn-login" id="navLoginBtn" onclick="checkLogin()">
+    <i class="fas fa-user"></i> Login / Sign Up
+  </button>
+</nav>
+
+<div class="page-header">
+  <h1><i class="fas fa-train" style="color:#ff9500;"></i> Train Search</h1>
+  <p>Search from 13,000+ trains across India</p>
+</div>
+
+<div class="search-bar-container">
+  <div class="search-row">
+    <input type="text" id="fromStn" placeholder="From Station (e.g. New Delhi)" />
+    <input type="text" id="toStn" placeholder="To Station (e.g. Mumbai CST)" />
+    <input type="date" id="travelDate" />
+    <select id="classFilter">
+      <option value="">All Classes</option>
+      <option value="SL">Sleeper (SL)</option>
+      <option value="3A">3rd AC (3A)</option>
+      <option value="2A">2nd AC (2A)</option>
+      <option value="1A">1st AC (1A)</option>
+      <option value="CC">Chair Car (CC)</option>
+      <option value="2S">2nd Sitting (2S)</option>
+    </select>
+    <button class="btn-go" onclick="searchTrains()"><i class="fas fa-search"></i> Search</button>
+  </div>
+</div>
+
+<div class="filters">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-btn active" onclick="filterType(this,'')">All</button>
+  <button class="filter-btn" onclick="filterType(this,'Rajdhani')">Rajdhani</button>
+  <button class="filter-btn" onclick="filterType(this,'Shatabdi')">Shatabdi</button>
+  <button class="filter-btn" onclick="filterType(this,'Vande Bharat')">Vande Bharat</button>
+  <button class="filter-btn" onclick="filterType(this,'Duronto')">Duronto</button>
+  <button class="filter-btn" onclick="filterType(this,'Superfast')">Superfast</button>
+  <button class="filter-btn" onclick="filterType(this,'Express')">Express</button>
+</div>
+
+<div class="results-container">
+  <div class="results-header">
+    <div class="results-count">Showing <span id="trainCount">0</span> trains</div>
+    <div style="color:#8ab4d8;font-size:0.85rem;" id="routeLabel"></div>
+  </div>
+  <div id="trainList"></div>
+</div>
+
+<footer>
+  <p>© 2024 IndianRail — Ministry of Railways. Helpline: <strong>139</strong></p>
+</footer>
+
+<script>
+const TRAINS = [
+  {num:"12301",name:"Howrah Rajdhani Express",from:"New Delhi",dep:"16:55",to:"Howrah Jn",arr:"10:00",dur:"17h 05m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:18,p:4755},{c:"2A",s:46,p:2990},{c:"3A",s:84,p:2080}]},
+  {num:"12302",name:"New Delhi Rajdhani Express",from:"Howrah Jn",dep:"13:55",to:"New Delhi",arr:"07:30",dur:"17h 35m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:12,p:4755},{c:"2A",s:38,p:2990},{c:"3A",s:62,p:2080}]},
+  {num:"12305",name:"Howrah Rajdhani Express",from:"New Delhi",dep:"22:25",to:"Howrah Jn",arr:"15:40",dur:"17h 15m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:10,p:4755},{c:"2A",s:40,p:2990},{c:"3A",s:72,p:2080}]},
+  {num:"12309",name:"Rajendra Nagar Rajdhani",from:"New Delhi",dep:"22:10",to:"Patna Jn",arr:"08:30",dur:"10h 20m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:8,p:3415},{c:"2A",s:28,p:2045},{c:"3A",s:66,p:1440}]},
+  {num:"12313",name:"Sealdah Rajdhani Express",from:"New Delhi",dep:"16:40",to:"Sealdah",arr:"10:15",dur:"17h 35m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:14,p:4760},{c:"2A",s:42,p:2995},{c:"3A",s:80,p:2085}]},
+  {num:"12951",name:"Mumbai Rajdhani Express",from:"New Delhi",dep:"16:25",to:"Mumbai Central",arr:"08:35",dur:"16h 10m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:20,p:5095},{c:"2A",s:50,p:3085},{c:"3A",s:94,p:2100}]},
+  {num:"12952",name:"New Delhi Rajdhani Express",from:"Mumbai Central",dep:"17:00",to:"New Delhi",arr:"08:35",dur:"15h 35m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:16,p:5095},{c:"2A",s:44,p:3085},{c:"3A",s:88,p:2100}]},
+  {num:"12001",name:"Bhopal Shatabdi Express",from:"New Delhi",dep:"06:00",to:"Bhopal Jn",arr:"13:55",dur:"7h 55m",days:"Daily Exc Sun",type:"Shatabdi",classes:[{c:"EC",s:32,p:2375},{c:"CC",s:180,p:1280}]},
+  {num:"12002",name:"New Delhi Shatabdi Express",from:"Bhopal Jn",dep:"14:35",to:"New Delhi",arr:"22:25",dur:"7h 50m",days:"Daily Exc Sun",type:"Shatabdi",classes:[{c:"EC",s:24,p:2375},{c:"CC",s:160,p:1280}]},
+  {num:"12011",name:"Kalka Shatabdi Express",from:"New Delhi",dep:"07:40",to:"Kalka",arr:"12:10",dur:"4h 30m",days:"Daily",type:"Shatabdi",classes:[{c:"EC",s:28,p:1040},{c:"CC",s:195,p:625}]},
+  {num:"12049",name:"Gatimaan Express",from:"Hazrat Nizamuddin",dep:"08:10",to:"Agra Cantt",arr:"09:50",dur:"1h 40m",days:"Daily Exc Fri",type:"Shatabdi",classes:[{c:"EC",s:56,p:1505},{c:"CC",s:252,p:755}]},
+  {num:"22439",name:"New Delhi Vande Bharat",from:"New Delhi",dep:"06:00",to:"Varanasi Jn",arr:"14:00",dur:"8h 00m",days:"Daily Exc Wed",type:"Vande Bharat",classes:[{c:"EC",s:52,p:2510},{c:"CC",s:1100,p:1490}]},
+  {num:"22436",name:"Vande Bharat Express",from:"New Delhi",dep:"06:00",to:"Jammu Tawi",arr:"14:15",dur:"8h 15m",days:"Daily Exc Thu",type:"Vande Bharat",classes:[{c:"EC",s:52,p:2080},{c:"CC",s:1100,p:1260}]},
+  {num:"20901",name:"Mumbai Vande Bharat",from:"Mumbai Central",dep:"06:00",to:"Gandhinagar Cap.",arr:"10:00",dur:"4h 00m",days:"Daily Exc Wed",type:"Vande Bharat",classes:[{c:"EC",s:52,p:1415},{c:"CC",s:1100,p:875}]},
+  {num:"22201",name:"Sealdah Duronto Express",from:"New Delhi",dep:"20:00",to:"Sealdah",arr:"12:45",dur:"16h 45m",days:"Mon Wed Fri",type:"Duronto",classes:[{c:"1A",s:18,p:4810},{c:"2A",s:46,p:2905},{c:"3A",s:86,p:2040},{c:"SL",s:288,p:735}]},
+  {num:"12213",name:"Delhi Sarai Rohilla Duronto",from:"Delhi Sarai Rohilla",dep:"23:00",to:"Mumbai Central",arr:"16:05",dur:"17h 05m",days:"Wed Sat",type:"Duronto",classes:[{c:"1A",s:16,p:5150},{c:"2A",s:44,p:3145},{c:"3A",s:80,p:2145},{c:"SL",s:272,p:775}]},
+  {num:"12903",name:"Golden Temple Mail",from:"Mumbai Central",dep:"21:30",to:"Amritsar Jn",arr:"23:30",dur:"26h 00m",days:"Daily",type:"Superfast",classes:[{c:"1A",s:14,p:4395},{c:"2A",s:42,p:2445},{c:"SL",s:288,p:535}]},
+  {num:"12621",name:"Tamil Nadu Express",from:"New Delhi",dep:"22:30",to:"Chennai Central",arr:"07:20",dur:"32h 50m",days:"Daily",type:"Superfast",classes:[{c:"1A",s:10,p:5320},{c:"2A",s:36,p:3025},{c:"3A",s:74,p:2130},{c:"SL",s:296,p:770}]},
+  {num:"12626",name:"Kerala Express",from:"New Delhi",dep:"11:30",to:"Thiruvananthapuram",arr:"14:10",dur:"50h 40m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3345},{c:"3A",s:80,p:2405},{c:"SL",s:312,p:855}]},
+  {num:"12627",name:"Karnataka Express",from:"New Delhi",dep:"22:30",to:"Bangalore City",arr:"20:30",dur:"46h 00m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:3275},{c:"3A",s:72,p:2340},{c:"SL",s:300,p:830}]},
+  {num:"12286",name:"Hazrat Nizamuddin Duronto",from:"Hazrat Nizamuddin",dep:"16:35",to:"Secunderabad",arr:"10:35",dur:"18h 00m",days:"Tue Thu Sun",type:"Duronto",classes:[{c:"2A",s:40,p:3030},{c:"3A",s:78,p:2070},{c:"SL",s:280,p:740}]},
+  {num:"12009",name:"Shatabdi Express",from:"Mumbai Central",dep:"06:10",to:"Ahmedabad Jn",arr:"12:50",dur:"6h 40m",days:"Daily Exc Tue",type:"Shatabdi",classes:[{c:"EC",s:30,p:1415},{c:"CC",s:174,p:800}]},
+  {num:"12010",name:"Shatabdi Express",from:"Ahmedabad Jn",dep:"14:10",to:"Mumbai Central",arr:"20:55",dur:"6h 45m",days:"Daily Exc Tue",type:"Shatabdi",classes:[{c:"EC",s:24,p:1415},{c:"CC",s:160,p:800}]},
+  {num:"12267",name:"Mumbai Duronto Express",from:"Mumbai Central",dep:"23:00",to:"Hazrat Nizamuddin",arr:"17:30",dur:"18h 30m",days:"Mon Wed Fri",type:"Duronto",classes:[{c:"1A",s:14,p:5150},{c:"2A",s:40,p:3145},{c:"3A",s:76,p:2145},{c:"SL",s:272,p:775}]},
+  {num:"12431",name:"Thiruvananthapuram Rajdhani",from:"Hazrat Nizamuddin",dep:"11:00",to:"Thiruvananthapuram",arr:"06:30",dur:"43h 30m",days:"Mon Thu",type:"Rajdhani",classes:[{c:"1A",s:12,p:8155},{c:"2A",s:40,p:4790},{c:"3A",s:78,p:3345}]},
+  {num:"12433",name:"Chennai Rajdhani Express",from:"Hazrat Nizamuddin",dep:"15:30",to:"Chennai Central",arr:"19:30",dur:"28h 00m",days:"Tue Fri",type:"Rajdhani",classes:[{c:"1A",s:14,p:6325},{c:"2A",s:46,p:3810},{c:"3A",s:88,p:2670}]},
+  {num:"12419",name:"Gomti Express",from:"Lucknow",dep:"05:50",to:"New Delhi",arr:"13:00",dur:"7h 10m",days:"Daily",type:"Express",classes:[{c:"2A",s:38,p:1145},{c:"3A",s:76,p:830},{c:"SL",s:292,p:305}]},
+  {num:"12230",name:"Lucknow Mail",from:"Lucknow",dep:"22:10",to:"New Delhi",arr:"06:00",dur:"7h 50m",days:"Daily",type:"Superfast",classes:[{c:"1A",s:12,p:2075},{c:"2A",s:36,p:1145},{c:"SL",s:290,p:265}]},
+  {num:"12312",name:"Kalka Mail",from:"Howrah Jn",dep:"19:00",to:"Kalka",arr:"16:15",dur:"45h 15m",days:"Daily",type:"Express",classes:[{c:"1A",s:10,p:3760},{c:"2A",s:32,p:2125},{c:"SL",s:280,p:595}]},
+  {num:"11057",name:"Amritsar Express",from:"Mumbai CST",dep:"21:45",to:"Amritsar Jn",arr:"05:35",dur:"31h 50m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:2095},{c:"3A",s:72,p:1500},{c:"SL",s:288,p:545}]},
+  {num:"12617",name:"Mangala Lakshadweep Express",from:"Hazrat Nizamuddin",dep:"21:20",to:"Ernakulam Jn",arr:"07:30",dur:"34h 10m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:3200},{c:"3A",s:76,p:2280},{c:"SL",s:292,p:810}]},
+  {num:"22691",name:"Rajdhani Express",from:"Bangalore City",dep:"20:00",to:"Hazrat Nizamuddin",arr:"05:30",dur:"33h 30m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:12,p:7220},{c:"2A",s:40,p:4270},{c:"3A",s:80,p:2990}]},
+  {num:"12431",name:"Trivandrum Rajdhani",from:"Hazrat Nizamuddin",dep:"11:00",to:"Thiruvananthapuram",arr:"06:30",dur:"43h 30m",days:"Mon Thu",type:"Rajdhani",classes:[{c:"1A",s:12,p:8155},{c:"2A",s:40,p:4790},{c:"3A",s:78,p:3345}]},
+  {num:"12722",name:"Dakshin Express",from:"Hazrat Nizamuddin",dep:"22:30",to:"Hyderabad Decan",arr:"17:00",dur:"42h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3060},{c:"3A",s:76,p:2195},{c:"SL",s:296,p:775}]},
+  {num:"12616",name:"G T Express",from:"New Delhi",dep:"18:30",to:"Chennai Central",arr:"04:50",dur:"34h 20m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:3060},{c:"3A",s:74,p:2195},{c:"SL",s:296,p:785}]},
+  {num:"12615",name:"G T Express",from:"Chennai Central",dep:"09:30",to:"New Delhi",arr:"20:00",dur:"34h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:3060},{c:"3A",s:72,p:2195},{c:"SL",s:288,p:785}]},
+  {num:"12139",name:"Sevagram Express",from:"Mumbai CST",dep:"20:25",to:"Nagpur",arr:"11:30",dur:"15h 05m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1395},{c:"3A",s:72,p:1000},{c:"SL",s:280,p:355}]},
+  {num:"12160",name:"Marathwada Express",from:"Mumbai CST",dep:"08:00",to:"Nanded",arr:"22:00",dur:"14h 00m",days:"Daily",type:"Express",classes:[{c:"SL",s:296,p:370},{c:"2S",s:400,p:165}]},
+  {num:"16031",name:"Andaman Express",from:"Chennai Central",dep:"21:20",to:"Mangalore Central",arr:"09:45",dur:"12h 25m",days:"Daily",type:"Express",classes:[{c:"SL",s:288,p:280},{c:"2S",s:300,p:110}]},
+  {num:"16094",name:"Lucknow Express",from:"Thiruvananthapuram",dep:"18:00",to:"Lucknow",arr:"05:30",dur:"59h 30m",days:"Wed",type:"Express",classes:[{c:"2A",s:36,p:3545},{c:"3A",s:74,p:2540},{c:"SL",s:288,p:905}]},
+  {num:"12025",name:"Pune Shatabdi Express",from:"New Delhi",dep:"06:00",to:"Pune Jn",arr:"09:30",dur:"27h 30m",days:"Daily",type:"Shatabdi",classes:[{c:"EC",s:28,p:1750},{c:"CC",s:175,p:1040}]},
+  {num:"12029",name:"Amritsar Shatabdi",from:"New Delhi",dep:"07:20",to:"Amritsar Jn",arr:"13:10",dur:"5h 50m",days:"Daily",type:"Shatabdi",classes:[{c:"EC",s:28,p:1560},{c:"CC",s:195,p:930}]},
+  {num:"12243",name:"Coimbatore Shatabdi",from:"Chennai Central",dep:"06:00",to:"Coimbatore Jn",arr:"12:55",dur:"6h 55m",days:"Daily Exc Wed",type:"Shatabdi",classes:[{c:"EC",s:28,p:1400},{c:"CC",s:175,p:855}]},
+  {num:"22217",name:"Mumbai Rajdhani Express",from:"Mumbai Central",dep:"14:10",to:"Patna Jn",arr:"12:00",dur:"45h 50m",days:"Mon Thu",type:"Rajdhani",classes:[{c:"1A",s:14,p:6845},{c:"2A",s:42,p:4035},{c:"3A",s:84,p:2815}]},
+  {num:"12555",name:"Gorakhdham Express",from:"Gorakhpur",dep:"22:55",to:"New Delhi",arr:"09:30",dur:"10h 35m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:32,p:1000},{c:"3A",s:68,p:720},{c:"SL",s:284,p:255}]},
+  {num:"12393",name:"Sampoorna Kranti Express",from:"Rajendranagar T",dep:"18:30",to:"New Delhi",arr:"08:30",dur:"14h 00m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:1485},{c:"3A",s:72,p:1060},{c:"SL",s:280,p:380}]},
+  {num:"12809",name:"Mumbai Mail",from:"Mumbai CST",dep:"21:45",to:"Hazrat Nizamuddin",arr:"14:30",dur:"40h 45m",days:"Daily",type:"Superfast",classes:[{c:"1A",s:10,p:4330},{c:"2A",s:34,p:2385},{c:"SL",s:278,p:640}]},
+  {num:"12137",name:"Punjab Mail",from:"Firozpur Cantt.",dep:"10:00",to:"Mumbai CST",arr:"21:55",dur:"35h 55m",days:"Daily",type:"Superfast",classes:[{c:"1A",s:14,p:4080},{c:"2A",s:38,p:2245},{c:"SL",s:284,p:600}]},
+  {num:"14055",name:"Brahmaputra Mail",from:"Dibrugarh",dep:"12:30",to:"Delhi",arr:"05:30",dur:"65h 00m",days:"Daily",type:"Express",classes:[{c:"2A",s:32,p:2980},{c:"3A",s:66,p:2135},{c:"SL",s:280,p:755}]},
+  {num:"15959",name:"Kamrup Express",from:"Dibrugarh",dep:"21:40",to:"New Delhi",arr:"17:00",dur:"67h 20m",days:"Mon Wed",type:"Express",classes:[{c:"2A",s:30,p:2800},{c:"3A",s:64,p:2005},{c:"SL",s:272,p:710}]},
+  {num:"12435",name:"Rajdhani Express",from:"Dibrugarh",dep:"19:45",to:"New Delhi",arr:"15:50",dur:"68h 05m",days:"Fri",type:"Rajdhani",classes:[{c:"1A",s:10,p:8760},{c:"2A",s:36,p:5155},{c:"3A",s:74,p:3600}]},
+  {num:"12987",name:"Ajmer Shatabdi Express",from:"Ajmer Jn",dep:"06:10",to:"New Delhi",arr:"12:50",dur:"6h 40m",days:"Daily Exc Sat",type:"Shatabdi",classes:[{c:"EC",s:26,p:1340},{c:"CC",s:170,p:800}]},
+  {num:"12016",name:"Ajmer Shatabdi",from:"Ajmer Jn",dep:"05:50",to:"New Delhi",arr:"12:35",dur:"6h 45m",days:"Daily Exc Mon",type:"Shatabdi",classes:[{c:"EC",s:26,p:1340},{c:"CC",s:170,p:800}]},
+  {num:"12561",name:"Swatantrata Senani Express",from:"New Delhi",dep:"19:10",to:"Gorakhpur",arr:"06:00",dur:"10h 50m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:1045},{c:"3A",s:70,p:750},{c:"SL",s:290,p:265}]},
+  {num:"12419",name:"Gomti Express",from:"Lucknow Charbagh",dep:"05:50",to:"New Delhi",arr:"13:00",dur:"7h 10m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1145},{c:"3A",s:74,p:825},{c:"SL",s:288,p:305}]},
+  {num:"12041",name:"New Jalpaiguri Shatabdi",from:"Howrah",dep:"06:05",to:"New Jalpaiguri",arr:"13:00",dur:"6h 55m",days:"Daily Exc Thu",type:"Shatabdi",classes:[{c:"EC",s:28,p:1390},{c:"CC",s:175,p:855}]},
+  {num:"12307",name:"Jodhpur Rajdhani Express",from:"Jodhpur Jn",dep:"14:00",to:"Hazrat Nizamuddin",arr:"09:45",dur:"19h 45m",days:"Wed Sun",type:"Rajdhani",classes:[{c:"1A",s:14,p:4040},{c:"2A",s:44,p:2385},{c:"3A",s:86,p:1670}]},
+  {num:"12453",name:"Rajdhani Express",from:"Ranchi",dep:"18:25",to:"New Delhi",arr:"07:10",dur:"12h 45m",days:"Mon Thu Sat",type:"Rajdhani",classes:[{c:"1A",s:12,p:4550},{c:"2A",s:40,p:2680},{c:"3A",s:82,p:1875}]},
+  {num:"12339",name:"Coalfield Express",from:"Howrah",dep:"19:25",to:"Dhanbad Jn",arr:"23:00",dur:"3h 35m",days:"Daily",type:"Express",classes:[{c:"2A",s:34,p:635},{c:"SL",s:280,p:195}]},
+  {num:"12345",name:"Saraighat Express",from:"Howrah",dep:"15:50",to:"Guwahati",arr:"08:10",dur:"16h 20m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:1900},{c:"3A",s:80,p:1365},{c:"SL",s:296,p:485}]},
+  {num:"12506",name:"North East Express",from:"Anand Vihar T",dep:"20:00",to:"Agartala",arr:"20:00",dur:"48h 00m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:2690},{c:"3A",s:68,p:1925},{c:"SL",s:284,p:685}]},
+  {num:"12523",name:"New Jalpaiguri Express",from:"New Delhi",dep:"16:00",to:"New Jalpaiguri",arr:"14:15",dur:"22h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:2060},{c:"3A",s:76,p:1475},{c:"SL",s:292,p:520}]},
+  {num:"12503",name:"Poorvottar Sampark Kranti",from:"Anand Vihar T",dep:"17:45",to:"Guwahati",arr:"14:20",dur:"44h 35m",days:"Mon Thu",type:"Superfast",classes:[{c:"2A",s:32,p:2760},{c:"3A",s:68,p:1975},{c:"SL",s:280,p:700}]},
+  {num:"11061",name:"Lokmanya Tilak-Jaynagar Express",from:"Lokmanya Tilak T",dep:"19:00",to:"Jaynagar",arr:"20:00",dur:"49h 00m",days:"Daily",type:"Express",classes:[{c:"SL",s:304,p:570},{c:"2S",s:300,p:210}]},
+  {num:"12489",name:"Bikaner Sampark Kranti",from:"Bikaner Jn",dep:"17:10",to:"Hazrat Nizamuddin",arr:"07:30",dur:"14h 20m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:32,p:1240},{c:"3A",s:66,p:890},{c:"SL",s:280,p:315}]},
+  {num:"12688",name:"Madurai Express",from:"Chennai Egmore",dep:"21:25",to:"Madurai Jn",arr:"08:15",dur:"10h 50m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1015},{c:"SL",s:292,p:255}]},
+  {num:"22691",name:"Rajdhani Express",from:"Bangalore City",dep:"20:00",to:"Hazrat Nizamuddin",arr:"05:30",dur:"33h 30m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:12,p:7220},{c:"2A",s:40,p:4270},{c:"3A",s:80,p:2990}]},
+  {num:"12163",name:"Chennai Dadar Express",from:"Chennai Egmore",dep:"18:00",to:"Dadar",arr:"18:25",dur:"24h 25m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2060},{c:"3A",s:76,p:1470},{c:"SL",s:292,p:520}]},
+  {num:"16587",name:"Yeshwantpur Bikaner Express",from:"Yeshwantpur",dep:"23:45",to:"Bikaner Jn",arr:"10:30",dur:"58h 45m",days:"Fri",type:"Express",classes:[{c:"SL",s:296,p:690},{c:"2S",s:280,p:265}]},
+  {num:"12028",name:"Chennai Shatabdi",from:"Bangalore City",dep:"06:00",to:"Chennai Central",arr:"11:00",dur:"5h 00m",days:"Daily Exc Tue",type:"Shatabdi",classes:[{c:"EC",s:28,p:1135},{c:"CC",s:170,p:680}]},
+  {num:"12601",name:"Mangalore Mail",from:"Chennai Central",dep:"21:00",to:"Mangalore Central",arr:"08:15",dur:"11h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:1225},{c:"3A",s:72,p:880},{c:"SL",s:288,p:310}]},
+  {num:"16325",name:"Trivandrum Express",from:"Ahmedabad Jn",dep:"10:15",to:"Thiruvananthapuram",arr:"05:10",dur:"66h 55m",days:"Mon",type:"Express",classes:[{c:"SL",s:296,p:825},{c:"2S",s:280,p:310}]},
+  {num:"12284",name:"Ernakulam Duronto",from:"Hazrat Nizamuddin",dep:"11:05",to:"Ernakulam Jn",arr:"07:00",dur:"43h 55m",days:"Sat",type:"Duronto",classes:[{c:"2A",s:40,p:3610},{c:"3A",s:78,p:2565},{c:"SL",s:288,p:910}]},
+  {num:"12649",name:"Karnataka Sampark Kranti",from:"Hazrat Nizamuddin",dep:"20:30",to:"Yasvantpur Jn",arr:"11:00",dur:"38h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3015},{c:"3A",s:74,p:2160},{c:"SL",s:296,p:765}]},
+  {num:"14259",name:"Varanasi Express",from:"New Delhi",dep:"23:05",to:"Varanasi Jn",arr:"12:00",dur:"12h 55m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1395},{c:"3A",s:74,p:1000},{c:"SL",s:296,p:355}]},
+  {num:"12791",name:"Secunderabad Express",from:"New Delhi",dep:"16:55",to:"Secunderabad",arr:"12:45",dur:"43h 50m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:3230},{c:"3A",s:78,p:2310},{c:"SL",s:300,p:820}]},
+  {num:"12591",name:"Gorakhpur Garib Rath",from:"Anand Vihar T",dep:"23:15",to:"Gorakhpur Jn",arr:"11:15",dur:"12h 00m",days:"Daily",type:"Garib Rath",classes:[{c:"3A",s:216,p:715}]},
+  {num:"12203",name:"Garib Rath Express",from:"Saharsa Jn",dep:"21:45",to:"Amritsar Jn",arr:"10:00",dur:"36h 15m",days:"Wed",type:"Garib Rath",classes:[{c:"3A",s:200,p:760}]},
+  {num:"12587",name:"Gorakhpur Garib Rath",from:"Gorakhpur",dep:"07:00",to:"Anand Vihar T",arr:"19:00",dur:"12h 00m",days:"Daily",type:"Garib Rath",classes:[{c:"3A",s:216,p:715}]},
+  {num:"16501",name:"Bangalore Express",from:"Ahmedabad Jn",dep:"17:20",to:"Bangalore City",arr:"12:35",dur:"43h 15m",days:"Mon",type:"Express",classes:[{c:"SL",s:296,p:635},{c:"2S",s:280,p:240}]},
+  {num:"11301",name:"Udyan Express",from:"Mumbai CST",dep:"08:05",to:"Bangalore City",arr:"05:10",dur:"21h 05m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:1935},{c:"3A",s:76,p:1385},{c:"SL",s:296,p:490}]},
+  {num:"11003",name:"Tutari Express",from:"Mumbai CST",dep:"23:00",to:"Daund Jn",arr:"03:00",dur:"4h 00m",days:"Daily",type:"Express",classes:[{c:"SL",s:296,p:130},{c:"2S",s:280,p:75}]},
+  {num:"12129",name:"Azad Hind Express",from:"Pune Jn",dep:"19:00",to:"Howrah",arr:"10:00",dur:"39h 00m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2450},{c:"3A",s:78,p:1750},{c:"SL",s:300,p:620}]},
+  {num:"12859",name:"Gitanjali Express",from:"Mumbai CST",dep:"06:05",to:"Howrah",arr:"12:00",dur:"29h 55m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:40,p:2300},{c:"3A",s:80,p:1645},{c:"SL",s:296,p:580}]},
+  {num:"12101",name:"Jnaneswari Super Deluxe",from:"Mumbai CST",dep:"21:00",to:"Howrah",arr:"22:45",dur:"25h 45m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2165},{c:"3A",s:78,p:1545},{c:"SL",s:292,p:545}]},
+  {num:"22119",name:"Tejas Express",from:"Mumbai CST",dep:"05:00",to:"Karmali",arr:"13:25",dur:"8h 25m",days:"Daily Exc Tue",type:"Shatabdi",classes:[{c:"EC",s:52,p:2510},{c:"CC",s:1100,p:1490}]},
+  {num:"22922",name:"Bandra Terminus Express",from:"Bandra Terminus",dep:"22:30",to:"Patna Jn",arr:"17:00",dur:"42h 30m",days:"Sun",type:"Express",classes:[{c:"SL",s:296,p:600},{c:"2S",s:280,p:230}]},
+  {num:"12201",name:"Kcvl Mumbai Express",from:"Thiruvananthapuram",dep:"10:30",to:"Mumbai LTT",arr:"12:05",dur:"49h 35m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:2680},{c:"3A",s:74,p:1920},{c:"SL",s:288,p:680}]},
+  {num:"12223",name:"Mumbai Rajdhani",from:"Mumbai Central",dep:"08:35",to:"Hazrat Nizamuddin",arr:"06:40",dur:"22h 05m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:16,p:4675},{c:"2A",s:48,p:2755},{c:"3A",s:90,p:1930}]},
+  {num:"14401",name:"Anand Vihar Express",from:"Anand Vihar T",dep:"17:20",to:"Allahabad Jn",arr:"05:30",dur:"12h 10m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1085},{c:"3A",s:70,p:775},{c:"SL",s:288,p:275}]},
+  {num:"12031",name:"Amritsar Shatabdi",from:"Amritsar Jn",dep:"16:35",to:"New Delhi",arr:"22:20",dur:"5h 45m",days:"Daily",type:"Shatabdi",classes:[{c:"EC",s:28,p:1560},{c:"CC",s:195,p:930}]},
+  {num:"12463",name:"Jodhpur-Patna Express",from:"Jodhpur Jn",dep:"19:00",to:"Patna Jn",arr:"14:40",dur:"43h 40m",days:"Mon",type:"Express",classes:[{c:"SL",s:296,p:655},{c:"2S",s:280,p:250}]},
+  {num:"19037",name:"Avadh Express",from:"Gorakhpur Jn",dep:"07:15",to:"Bandra Terminus",arr:"09:35",dur:"50h 20m",days:"Daily",type:"Express",classes:[{c:"SL",s:296,p:600},{c:"2S",s:280,p:230}]},
+  {num:"14660",name:"Patliputra Express",from:"Kamakhya",dep:"18:30",to:"New Delhi",arr:"21:55",dur:"51h 25m",days:"Mon Thu",type:"Superfast",classes:[{c:"2A",s:32,p:2280},{c:"3A",s:66,p:1630},{c:"SL",s:280,p:575}]},
+  {num:"12559",name:"Shiv Ganga Express",from:"Varanasi Jn",dep:"11:00",to:"New Delhi",arr:"23:15",dur:"12h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1395},{c:"3A",s:72,p:1000},{c:"SL",s:284,p:355}]},
+  {num:"15017",name:"Lokmanya Tilak-Gorakhpur Expr",from:"Lokmanya Tilak T",dep:"15:30",to:"Gorakhpur",arr:"18:30",dur:"51h 00m",days:"Mon Thu",type:"Express",classes:[{c:"SL",s:296,p:580},{c:"2S",s:280,p:215}]},
+  {num:"12401",name:"Magadh Express",from:"Islampur",dep:"17:25",to:"New Delhi",arr:"12:15",dur:"42h 50m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:1965},{c:"3A",s:72,p:1405},{c:"SL",s:288,p:500}]},
+  {num:"12791",name:"Danapur Duronto",from:"Danapur",dep:"16:05",to:"Mumbai LTT",arr:"16:30",dur:"48h 25m",days:"Mon",type:"Duronto",classes:[{c:"2A",s:38,p:2890},{c:"3A",s:76,p:2065},{c:"SL",s:288,p:730}]},
+  {num:"12175",name:"Chambal Express",from:"New Delhi",dep:"18:00",to:"Kota Jn",arr:"02:30",dur:"8h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:890},{c:"3A",s:72,p:640},{c:"SL",s:292,p:225}]},
+  {num:"12591",name:"Jalandhar City Exp",from:"Gorakhpur",dep:"23:30",to:"Jalandhar City",arr:"19:40",dur:"20h 10m",days:"Daily",type:"Express",classes:[{c:"SL",s:296,p:445},{c:"2S",s:280,p:185}]},
+  {num:"12473",name:"Sarvodaya Express",from:"New Delhi",dep:"23:15",to:"Haridwar Jn",arr:"03:20",dur:"4h 05m",days:"Daily",type:"Express",classes:[{c:"SL",s:292,p:185},{c:"2S",s:285,p:75}]},
+  {num:"18110",name:"Muri Express",from:"Jammu Tawi",dep:"21:15",to:"Tatanagar Jn",arr:"08:00",dur:"58h 45m",days:"Mon",type:"Express",classes:[{c:"SL",s:296,p:730},{c:"2S",s:280,p:280}]},
+  {num:"12521",name:"Rapti Sagar Express",from:"Barauni Jn",dep:"20:25",to:"Ernakulam Jn",arr:"04:30",dur:"80h 05m",days:"Wed",type:"Superfast",classes:[{c:"2A",s:34,p:3850},{c:"3A",s:70,p:2755},{c:"SL",s:288,p:975}]},
+  {num:"12779",name:"Goa Express",from:"Hazrat Nizamuddin",dep:"15:00",to:"Vasco-da-Gama",arr:"21:40",dur:"30h 40m",days:"Mon Wed Fri Sun",type:"Express",classes:[{c:"2A",s:36,p:2455},{c:"3A",s:72,p:1755},{c:"SL",s:292,p:620}]},
+  {num:"12780",name:"Goa Express",from:"Vasco-da-Gama",dep:"21:15",to:"Hazrat Nizamuddin",arr:"04:10",dur:"30h 55m",days:"Tue Thu Sat Mon",type:"Express",classes:[{c:"2A",s:36,p:2455},{c:"3A",s:72,p:1755},{c:"SL",s:292,p:620}]},
+  {num:"12431",name:"Thiruvananthapuram Central Raj",from:"Hazrat Nizamuddin",dep:"11:00",to:"Thiruvananthapuram Central",arr:"06:30",dur:"43h 30m",days:"Mon Thu",type:"Rajdhani",classes:[{c:"1A",s:12,p:8155},{c:"2A",s:40,p:4790},{c:"3A",s:78,p:3345}]},
+  {num:"12656",name:"Navjeevan Express",from:"Ahmedabad Jn",dep:"05:35",to:"Chennai Central",arr:"07:05",dur:"25h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2520},{c:"3A",s:76,p:1800},{c:"SL",s:292,p:635}]},
+  {num:"12655",name:"Navjeevan Express",from:"Chennai Central",dep:"15:30",to:"Ahmedabad Jn",arr:"17:15",dur:"25h 45m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2520},{c:"3A",s:76,p:1800},{c:"SL",s:292,p:635}]},
+  {num:"12650",name:"Karnataka Sampark Kranti Exp",from:"Yasvantpur Jn",dep:"11:15",to:"Hazrat Nizamuddin",arr:"05:30",dur:"42h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3015},{c:"3A",s:74,p:2160},{c:"SL",s:296,p:765}]},
+  {num:"12241",name:"Chalukya Express",from:"Chennai Central",dep:"18:00",to:"Mumbai CST",arr:"20:30",dur:"26h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2350},{c:"3A",s:76,p:1680},{c:"SL",s:292,p:595}]},
+  {num:"12242",name:"Chalukya Express",from:"Mumbai CST",dep:"20:00",to:"Chennai Central",arr:"22:15",dur:"26h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2350},{c:"3A",s:76,p:1680},{c:"SL",s:292,p:595}]},
+  {num:"12625",name:"Kerala Express",from:"Thiruvananthapuram Central",dep:"11:45",to:"New Delhi",arr:"18:30",dur:"54h 45m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3345},{c:"3A",s:80,p:2405},{c:"SL",s:312,p:855}]},
+  {num:"12628",name:"Karnataka Express",from:"Bangalore City",dep:"21:30",to:"New Delhi",arr:"23:45",dur:"50h 15m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:3275},{c:"3A",s:72,p:2340},{c:"SL",s:300,p:830}]},
+  {num:"16317",name:"Himsagar Express",from:"Jammu Tawi",dep:"23:20",to:"Kanyakumari",arr:"22:20",dur:"71h 00m",days:"Mon",type:"Express",classes:[{c:"2A",s:34,p:4010},{c:"3A",s:70,p:2870},{c:"SL",s:284,p:1015}]},
+  {num:"16318",name:"Himsagar Express",from:"Kanyakumari",dep:"05:30",to:"Jammu Tawi",arr:"04:15",dur:"70h 45m",days:"Fri",type:"Express",classes:[{c:"2A",s:34,p:4010},{c:"3A",s:70,p:2870},{c:"SL",s:284,p:1015}]},
+  {num:"12649",name:"Karnataka Sampark Kranti",from:"Hazrat Nizamuddin",dep:"20:30",to:"Yasvantpur Jn",arr:"11:00",dur:"38h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3015},{c:"3A",s:74,p:2160},{c:"SL",s:296,p:765}]},
+  {num:"12721",name:"Dakshin Express",from:"Hyderabad Decan",dep:"22:15",to:"Hazrat Nizamuddin",arr:"17:00",dur:"42h 45m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:3060},{c:"3A",s:76,p:2195},{c:"SL",s:296,p:775}]},
+  {num:"11014",name:"Coimbatore Express",from:"Lokmanya Tilak T",dep:"22:15",to:"Coimbatore Jn",arr:"08:20",dur:"34h 05m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:2265},{c:"3A",s:72,p:1620},{c:"SL",s:284,p:575}]},
+  {num:"11013",name:"Coimbatore Express",from:"Coimbatore Jn",dep:"19:30",to:"Lokmanya Tilak T",arr:"05:40",dur:"34h 10m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:2265},{c:"3A",s:72,p:1620},{c:"SL",s:284,p:575}]},
+  {num:"12683",name:"Superfast Express",from:"Chennai Central",dep:"22:05",to:"Mangalore Central",arr:"12:00",dur:"13h 55m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1250},{c:"3A",s:74,p:895},{c:"SL",s:288,p:315}]},
+  {num:"12684",name:"Superfast Express",from:"Mangalore Central",dep:"18:20",to:"Chennai Central",arr:"08:30",dur:"14h 10m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1250},{c:"3A",s:74,p:895},{c:"SL",s:288,p:315}]},
+  {num:"15905",name:"Vivek Express",from:"Dibrugarh",dep:"22:25",to:"Kanyakumari",arr:"16:00",dur:"82h 30m",days:"Mon",type:"Express",classes:[{c:"2A",s:30,p:5015},{c:"3A",s:66,p:3590},{c:"SL",s:280,p:1270}]},
+  {num:"12721",name:"Andhra Pradesh Express",from:"New Delhi",dep:"19:50",to:"Secunderabad",arr:"05:45",dur:"33h 55m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:38,p:2905},{c:"3A",s:76,p:2080},{c:"SL",s:296,p:740}]},
+  {num:"12544",name:"Kaifiyat Express",from:"Azamgarh",dep:"20:30",to:"Delhi",arr:"07:50",dur:"11h 20m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:34,p:1085},{c:"3A",s:70,p:775},{c:"SL",s:284,p:275}]},
+  {num:"12057",name:"Amritsar Superfast Express",from:"Delhi Sarai Rohilla",dep:"09:55",to:"Amritsar Jn",arr:"17:05",dur:"7h 10m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:885},{c:"3A",s:72,p:635},{c:"SL",s:288,p:225}]},
+  {num:"12498",name:"Shane-e-Punjab Express",from:"Amritsar Jn",dep:"16:15",to:"Hazrat Nizamuddin",arr:"06:00",dur:"13h 45m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1195},{c:"3A",s:72,p:855},{c:"SL",s:288,p:305}]},
+  {num:"12497",name:"Shane-e-Punjab Express",from:"Hazrat Nizamuddin",dep:"17:30",to:"Amritsar Jn",arr:"07:00",dur:"13h 30m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1195},{c:"3A",s:72,p:855},{c:"SL",s:288,p:305}]},
+  {num:"12426",name:"Jammu Rajdhani Express",from:"New Delhi",dep:"20:45",to:"Jammu Tawi",arr:"07:30",dur:"10h 45m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:14,p:3115},{c:"2A",s:44,p:1835},{c:"3A",s:86,p:1285}]},
+  {num:"22691",name:"Bangalore Rajdhani",from:"Bangalore City",dep:"20:00",to:"Hazrat Nizamuddin",arr:"05:30",dur:"33h 30m",days:"Daily",type:"Rajdhani",classes:[{c:"1A",s:12,p:7220},{c:"2A",s:40,p:4270},{c:"3A",s:80,p:2990}]},
+  {num:"12472",name:"Swaraj Express",from:"Jammu Tawi",dep:"07:50",to:"Hazrat Nizamuddin",arr:"21:55",dur:"14h 05m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1295},{c:"3A",s:72,p:930},{c:"SL",s:288,p:330}]},
+  {num:"12471",name:"Swaraj Express",from:"Hazrat Nizamuddin",dep:"07:30",to:"Jammu Tawi",arr:"21:40",dur:"14h 10m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:36,p:1295},{c:"3A",s:72,p:930},{c:"SL",s:288,p:330}]},
+  {num:"12204",name:"Saharsa Garib Rath",from:"Amritsar Jn",dep:"12:00",to:"Saharsa Jn",arr:"14:00",dur:"26h 00m",days:"Sat",type:"Garib Rath",classes:[{c:"3A",s:200,p:760}]},
+  {num:"22403",name:"Delhi Anand Vihar Poorva Exp",from:"Anand Vihar T",dep:"12:30",to:"Howrah",arr:"09:55",dur:"21h 25m",days:"Mon Wed Fri",type:"Superfast",classes:[{c:"2A",s:36,p:2005},{c:"3A",s:72,p:1435},{c:"SL",s:296,p:505}]},
+  {num:"12382",name:"Poorva Express",from:"New Delhi",dep:"14:25",to:"Howrah",arr:"09:30",dur:"19h 05m",days:"Tue Thu Sat",type:"Superfast",classes:[{c:"2A",s:38,p:2005},{c:"3A",s:76,p:1435},{c:"SL",s:296,p:505}]},
+  {num:"12381",name:"Poorva Express",from:"Howrah",dep:"15:50",to:"New Delhi",arr:"11:30",dur:"19h 40m",days:"Mon Wed Sun",type:"Superfast",classes:[{c:"2A",s:38,p:2005},{c:"3A",s:76,p:1435},{c:"SL",s:296,p:505}]},
+  {num:"12274",name:"Howrah Duronto Express",from:"Hazrat Nizamuddin",dep:"12:30",to:"Howrah",arr:"04:30",dur:"16h 00m",days:"Mon Thu Sat",type:"Duronto",classes:[{c:"1A",s:16,p:4810},{c:"2A",s:44,p:2905},{c:"3A",s:82,p:2040},{c:"SL",s:286,p:735}]},
+  {num:"12275",name:"Howrah Duronto Express",from:"Howrah",dep:"09:55",to:"Hazrat Nizamuddin",arr:"01:55",dur:"16h 00m",days:"Tue Fri Sun",type:"Duronto",classes:[{c:"1A",s:16,p:4810},{c:"2A",s:44,p:2905},{c:"3A",s:82,p:2040},{c:"SL",s:286,p:735}]},
+  {num:"12555",name:"Gorakhdham Express",from:"Gorakhpur",dep:"22:55",to:"New Delhi",arr:"09:30",dur:"10h 35m",days:"Daily",type:"Superfast",classes:[{c:"2A",s:32,p:1000},{c:"3A",s:68,p:720},{c:"SL",s:284,p:255}]},
+  {num:"19019",name:"Dehradun Express",from:"Mumbai Central",dep:"21:00",to:"Dehradun",arr:"05:50",dur:"32h 50m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:2155},{c:"3A",s:72,p:1545},{c:"SL",s:284,p:545}]},
+  {num:"19020",name:"Dehradun Express",from:"Dehradun",dep:"21:50",to:"Mumbai Central",arr:"07:00",dur:"33h 10m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:2155},{c:"3A",s:72,p:1545},{c:"SL",s:284,p:545}]},
+  {num:"12688",name:"Madurai Express",from:"Chennai Egmore",dep:"21:25",to:"Madurai Jn",arr:"08:15",dur:"10h 50m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1015},{c:"SL",s:292,p:255}]},
+  {num:"12687",name:"Madurai Express",from:"Madurai Jn",dep:"19:05",to:"Chennai Egmore",arr:"05:55",dur:"10h 50m",days:"Daily",type:"Express",classes:[{c:"2A",s:36,p:1015},{c:"SL",s:292,p:255}]},
+  {num:"22887",name:"Howrah Pune Superfast",from:"Howrah",dep:"11:30",to:"Pune Jn",arr:"22:30",dur:"35h 00m",days:"Mon",type:"Superfast",classes:[{c:"2A",s:36,p:2510},{c:"3A",s:72,p:1795},{c:"SL",s:292,p:635}]},
+  {num:"12246",name:"Yesvantpur Duronto Express",from:"Yesvantpur Jn",dep:"23:35",to:"Hazrat Nizamuddin",arr:"05:30",dur:"29h 55m",days:"Fri",type:"Duronto",classes:[{c:"1A",s:14,p:5980},{c:"2A",s:42,p:3560},{c:"3A",s:80,p:2490}]}
+];
+let currentFilter = '';
+
+const PAGE_SIZE = 20;
+let visibleCount = PAGE_SIZE;
+let currentResults = [];
+
+function typeClass(type){
+  const m = {'Rajdhani':'rajdhani','Shatabdi':'shatabdi','Vande Bharat':'vande',
+    'Duronto':'duronto','Superfast':'superfast','Express':'express',
+    'Garib Rath':'garib','Intercity':'intercity'};
+  return 'type-' + (m[type] || 'express');
+}
+
+function trainCardHTML(t){
+  const classBadges = t.classes.map(c =>
+    `<div class="class-badge" onclick="bookTrain('${t.num}','${encodeURIComponent(t.name)}','${c.c}','${c.p}')">
+      ${c.c}<span class="seats"> ${c.s} avl</span><span class="price"> ₹${c.p.toLocaleString('en-IN')}</span>
+    </div>`
+  ).join('');
+  return `
+  <div class="train-card">
+    <div class="train-name">
+      <h3>${t.name}</h3>
+      <div class="train-num"><i class="fas fa-hashtag"></i> ${t.num}</div>
+      <div class="train-type ${typeClass(t.type)}">${t.type}</div>
+      <div class="days-run">Runs: <span>${t.days}</span></div>
+    </div>
+    <div class="time-block">
+      <div class="time">${t.dep}</div>
+      <div class="station">${t.from}</div>
+    </div>
+    <div class="journey-mid">
+      <div class="duration"><i class="far fa-clock"></i> ${t.dur}</div>
+      <div class="line-track"><div class="dot"></div><div class="line"></div><div class="dot"></div></div>
+    </div>
+    <div class="time-block">
+      <div class="time">${t.arr}</div>
+      <div class="station">${t.to}</div>
+    </div>
+    <div>
+      <div class="class-row">${classBadges}</div>
+      <button class="btn-book" onclick="bookTrain('${t.num}','${encodeURIComponent(t.name)}','',0)" style="margin-top:10px;width:100%;">
+        <i class="fas fa-ticket-alt"></i> Book Now
+      </button>
+    </div>
+  </div>`;
+}
+
+function renderTrains(list){
+  currentResults = list;
+  visibleCount = PAGE_SIZE;
+  const container = document.getElementById('trainList');
+  document.getElementById('trainCount').textContent = list.length;
+  if(!list.length){
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#8ab4d8;"><i class="fas fa-train" style="font-size:3rem;opacity:0.3;display:block;margin-bottom:16px;"></i>No trains found. Try different stations or clear the filter.</div>';
+    return;
+  }
+  const slice = list.slice(0, visibleCount);
+  container.innerHTML = slice.map(trainCardHTML).join('') + loadMoreBtn(list.length, visibleCount);
+}
+
+function loadMoreBtn(total, shown){
+  if(shown >= total) return '';
+  return `<div style="text-align:center;margin:24px 0;">
+    <button onclick="loadMore()" style="padding:13px 40px;background:linear-gradient(135deg,#003580,#0055b3);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.3s;">
+      <i class="fas fa-chevron-down"></i> Load More (${total - shown} remaining)
+    </button>
+  </div>`;
+}
+
+function loadMore(){
+  visibleCount += PAGE_SIZE;
+  const container = document.getElementById('trainList');
+  const slice = currentResults.slice(0, visibleCount);
+  container.innerHTML = slice.map(trainCardHTML).join('') + loadMoreBtn(currentResults.length, visibleCount);
+}
+
+function bookTrain(num, encodedName, cls, price){
+  localStorage.setItem('bookTrainNum', num);
+  localStorage.setItem('bookTrainName', decodeURIComponent(encodedName));
+  localStorage.setItem('bookClass', cls);
+  localStorage.setItem('bookPrice', price);
+  window.location.href = 'booking.html';
+}
+
+function searchTrains(){
+  const from = document.getElementById('fromStn').value.toLowerCase().trim();
+  const to = document.getElementById('toStn').value.toLowerCase().trim();
+  let results = TRAINS;
+  if(from) results = results.filter(t => t.from.toLowerCase().includes(from));
+  if(to) results = results.filter(t => t.to.toLowerCase().includes(to));
+  if(currentFilter) results = results.filter(t => t.type === currentFilter);
+  const route = from||to ? `${from||'Any'} → ${to||'Any'}` : 'All ' + TRAINS.length + ' Trains';
+  document.getElementById('routeLabel').textContent = route;
+  renderTrains(results);
+}
+
+function filterType(btn, type){
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentFilter = type;
+  searchTrains();
+}
+
+function checkLogin(){ window.location.href = 'index.html'; }
+
+// Init on page load
+document.getElementById('travelDate').value = new Date().toISOString().split('T')[0];
+const _from = localStorage.getItem('searchFrom') || '';
+const _to   = localStorage.getItem('searchTo')   || '';
+const _date = localStorage.getItem('searchDate') || '';
+if(_from) document.getElementById('fromStn').value = _from;
+if(_to)   document.getElementById('toStn').value   = _to;
+if(_date) document.getElementById('travelDate').value = _date;
+searchTrains();
+
+const _user = localStorage.getItem('loggedInUser');
+if(_user) document.getElementById('navLoginBtn').innerHTML = '<i class="fas fa-user-check"></i> ' + _user;
+</script>
+</body>
+</html>
