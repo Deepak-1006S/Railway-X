@@ -436,21 +436,121 @@ function loadMore(){
 }
 
 function bookTrain(num, encodedName, cls, price){
-  localStorage.setItem('bookTrainNum', num);
+  // Find the full train object so we can pass all details to the booking page
+  const train = TRAINS.find(t => t.num === num && encodeURIComponent(t.name) === encodedName);
+  localStorage.setItem('bookTrainNum',  num);
   localStorage.setItem('bookTrainName', decodeURIComponent(encodedName));
-  localStorage.setItem('bookClass', cls);
-  localStorage.setItem('bookPrice', price);
+  localStorage.setItem('bookClass',     cls);
+  localStorage.setItem('bookPrice',     price);
+  if(train){
+    localStorage.setItem('bookDep',  train.dep);
+    localStorage.setItem('bookArr',  train.arr);
+    localStorage.setItem('bookDur',  train.dur);
+    localStorage.setItem('bookFrom', train.from);
+    localStorage.setItem('bookTo',   train.to);
+    // Pass all classes so booking page can build the class selector from real data
+    localStorage.setItem('bookClasses', JSON.stringify(train.classes));
+  }
   window.location.href = 'booking.html';
 }
 
+// Common station aliases — maps user shorthand/typos to canonical substrings
+const STATION_ALIASES = {
+  'delhi':    'delhi',
+  'dehli':    'delhi',
+  'dilli':    'delhi',
+  'ndls':     'new delhi',
+  'new delhi':'new delhi',
+  'mumbai':   'mumbai',
+  'bombay':   'mumbai',
+  'bom':      'mumbai',
+  'chennai':  'chennai',
+  'madras':   'chennai',
+  'mas':      'chennai',
+  'kolkata':  'howrah',
+  'calcutta': 'howrah',
+  'howrah':   'howrah',
+  'hwh':      'howrah',
+  'bangalore':'bangalore',
+  'bengaluru':'bangalore',
+  'blr':      'bangalore',
+  'hyderabad':'hyderabad',
+  'hyd':      'hyderabad',
+  'pune':     'pune',
+  'ahmedabad':'ahmedabad',
+  'amd':      'ahmedabad',
+  'lucknow':  'lucknow',
+  'lko':      'lucknow',
+  'patna':    'patna',
+  'pnbe':     'patna',
+  'varanasi': 'varanasi',
+  'banaras':  'varanasi',
+  'kashi':    'varanasi',
+  'bhopal':   'bhopal',
+  'nagpur':   'nagpur',
+  'jaipur':   'jaipur',
+  'amritsar': 'amritsar',
+  'jammu':    'jammu',
+  'guwahati': 'guwahati',
+  'trivandrum':'thiruvananthapuram',
+  'thiruvananthapuram':'thiruvananthapuram',
+  'cochin':   'ernakulam',
+  'kochi':    'ernakulam',
+  'ernakulam':'ernakulam',
+  'coimbatore':'coimbatore',
+  'goa':      'goa',
+  'vasco':    'vasco',
+  'gorakhpur':'gorakhpur',
+  'agra':     'agra',
+  'kanpur':   'kanpur',
+  'allahabad':'allahabad',
+  'prayagraj':'allahabad',
+  'ranchi':   'ranchi',
+  'bhubaneswar':'bhubaneswar',
+  'visakhapatnam':'visakhapatnam',
+  'vizag':    'visakhapatnam',
+  'mangalore':'mangalore',
+  'kanyakumari':'kanyakumari',
+  'dibrugarh':'dibrugarh',
+  'dehradun': 'dehradun',
+  'haridwar': 'haridwar',
+  'jodhpur':  'jodhpur',
+  'bikaner':  'bikaner',
+  'ajmer':    'ajmer',
+  'udaipur':  'udaipur',
+  'surat':    'surat',
+  'baroda':   'vadodara',
+  'vadodara': 'vadodara',
+};
+
+function normalizeQuery(q){
+  const key = q.toLowerCase().trim();
+  return STATION_ALIASES[key] || key;
+}
+
+function matchStation(stationName, query){
+  if(!query) return true;
+  const normalizedQuery = normalizeQuery(query);
+  const s = stationName.toLowerCase();
+  // Direct substring match on normalized query
+  if(s.includes(normalizedQuery)) return true;
+  // Word-by-word match (all typed words must appear)
+  const words = normalizedQuery.split(/\s+/).filter(Boolean);
+  return words.every(w => s.includes(w));
+}
+
 function searchTrains(){
-  const from = document.getElementById('fromStn').value.toLowerCase().trim();
-  const to = document.getElementById('toStn').value.toLowerCase().trim();
+  const from  = document.getElementById('fromStn').value.trim();
+  const to    = document.getElementById('toStn').value.trim();
+  const cls   = document.getElementById('classFilter').value;
   let results = TRAINS;
-  if(from) results = results.filter(t => t.from.toLowerCase().includes(from));
-  if(to) results = results.filter(t => t.to.toLowerCase().includes(to));
+  if(from) results = results.filter(t => matchStation(t.from, from));
+  if(to)   results = results.filter(t => matchStation(t.to,   to));
   if(currentFilter) results = results.filter(t => t.type === currentFilter);
-  const route = from||to ? `${from||'Any'} → ${to||'Any'}` : 'All ' + TRAINS.length + ' Trains';
+  if(cls)  results = results.filter(t => t.classes.some(c => c.c === cls));
+  const route = from||to
+    ? `${from || 'Any'} → ${to || 'Any'}`
+    : 'All ' + TRAINS.length + ' Trains';
   document.getElementById('routeLabel').textContent = route;
   renderTrains(results);
 }
@@ -472,7 +572,18 @@ const _date = localStorage.getItem('searchDate') || '';
 if(_from) document.getElementById('fromStn').value = _from;
 if(_to)   document.getElementById('toStn').value   = _to;
 if(_date) document.getElementById('travelDate').value = _date;
-searchTrains();
+
+// Only auto-filter when the user came here via the search form (both from+to are set)
+// Otherwise show all trains so the page is never empty
+if(_from && _to){
+  searchTrains();
+} else {
+  // Clear any stale single-field values so results aren't accidentally filtered
+  document.getElementById('fromStn').value = _from;
+  document.getElementById('toStn').value   = _to;
+  renderTrains(TRAINS);
+  document.getElementById('routeLabel').textContent = 'All ' + TRAINS.length + ' Trains';
+}
 
 const _user = localStorage.getItem('loggedInUser');
 if(_user) document.getElementById('navLoginBtn').innerHTML = '<i class="fas fa-user-check"></i> ' + _user;
