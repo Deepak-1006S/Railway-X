@@ -433,23 +433,61 @@ let passengerCount = 1;
 
 // Load train info from localStorage
 window.onload = function(){
-  const tName = localStorage.getItem('bookTrainName') || 'Sample Express';
-  const tNum = localStorage.getItem('bookTrainNum') || '12345';
-  const cls = localStorage.getItem('bookClass') || 'SL';
-  const price = parseInt(localStorage.getItem('bookPrice') || '455');
-  const date = localStorage.getItem('searchDate') || new Date().toISOString().split('T')[0];
+  const tName   = localStorage.getItem('bookTrainName') || 'Sample Express';
+  const tNum    = localStorage.getItem('bookTrainNum')  || '12345';
+  const dep     = localStorage.getItem('bookDep')       || '06:30';
+  const arr     = localStorage.getItem('bookArr')       || '14:45';
+  const dur     = localStorage.getItem('bookDur')       || '8h 15m';
+  const from    = localStorage.getItem('bookFrom')      || localStorage.getItem('searchFrom') || 'New Delhi';
+  const to      = localStorage.getItem('bookTo')        || localStorage.getItem('searchTo')   || 'Howrah Jn';
+  const selCls  = localStorage.getItem('bookClass')     || 'SL';
+  const selPrice= parseInt(localStorage.getItem('bookPrice') || '455');
+  const date    = localStorage.getItem('searchDate')    || new Date().toISOString().split('T')[0];
 
-  document.getElementById('trainName').textContent = tName;
-  document.getElementById('trainNum').textContent = '#' + tNum;
-  document.getElementById('depTime').textContent = '06:30';
-  document.getElementById('arrTime').textContent = '14:45';
-  document.getElementById('fromStn').textContent = localStorage.getItem('searchFrom') || 'New Delhi';
-  document.getElementById('toStn').textContent = localStorage.getItem('searchTo') || 'Howrah Jn';
-  document.getElementById('durDisplay').textContent = '8h 15m';
-  document.getElementById('journeyDate').value = date;
-  document.getElementById('journeyDate').min = new Date().toISOString().split('T')[0];
+  document.getElementById('trainName').textContent  = tName;
+  document.getElementById('trainNum').textContent   = '#' + tNum;
+  document.getElementById('depTime').textContent    = dep;
+  document.getElementById('arrTime').textContent    = arr;
+  document.getElementById('fromStn').textContent    = from;
+  document.getElementById('toStn').textContent      = to;
+  document.getElementById('durDisplay').textContent = dur;
+  document.getElementById('journeyDate').value      = date;
+  document.getElementById('journeyDate').min        = new Date().toISOString().split('T')[0];
 
-  if(price > 0){ basePerPerson = price; }
+  // Build class selector from real train data if available
+  const classesRaw = localStorage.getItem('bookClasses');
+  if(classesRaw){
+    try{
+      const classes = JSON.parse(classesRaw);
+      const container = document.getElementById('classSelect');
+      container.innerHTML = '';
+      classes.forEach((c, i) => {
+        const isSelected = (c.c === selCls) || (i === 0 && !selCls);
+        if(isSelected){ selectedClass = c.c; basePerPerson = c.p; }
+        container.innerHTML += `
+          <div class="class-opt${isSelected?' selected':''}" onclick="selectClass(this,'${c.c}',${c.p})" data-price="${c.p}">
+            <div class="cls-name">${c.c}</div>
+            <div class="cls-price">₹${c.p.toLocaleString('en-IN')}</div>
+            <div class="cls-avl">${c.s} avl</div>
+          </div>`;
+      });
+      // If nothing was pre-selected (selCls not found), select first
+      if(!container.querySelector('.selected')){
+        const first = container.querySelector('.class-opt');
+        if(first) first.classList.add('selected');
+        selectedClass = classes[0].c;
+        basePerPerson = classes[0].p;
+      }
+    } catch(e){
+      // Fallback: use stored price
+      if(selPrice > 0){ basePerPerson = selPrice; }
+      if(selCls)       { selectedClass = selCls; }
+    }
+  } else {
+    if(selPrice > 0){ basePerPerson = selPrice; }
+    if(selCls)       { selectedClass = selCls; }
+  }
+
   updateFare();
 
   const user = localStorage.getItem('loggedInUser');
