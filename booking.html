@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IndianRail - Book Ticket</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <!-- Razorpay Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',sans-serif; background:#0a1628; color:#fff; min-height:100vh; }
+    nav {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 40px; background:linear-gradient(90deg,#003580,#0055b3);
+      box-shadow:0 2px 20px rgba(0,0,0,0.5); position:sticky; top:0; z-index:100;
+    }
+    .logo { display:flex; align-items:center; gap:12px; cursor:pointer; }
+    .logo span { font-size:1.4rem; font-weight:700; color:#fff; }
+    .logo small { display:block; font-size:0.7rem; color:#aad4ff; letter-spacing:2px; }
+    nav ul { list-style:none; display:flex; gap:24px; }
+    nav ul li a {
+      color:#cce0ff; text-decoration:none; font-size:0.95rem; font-weight:500;
+      padding:6px 12px; border-radius:6px; transition:all 0.3s;
+    }
+    nav ul li a:hover, nav ul li a.active { background:rgba(255,255,255,0.15); color:#fff; }
+    .btn-login {
+      background:linear-gradient(135deg,#ff6b00,#ff9500); color:#fff;
+      border:none; padding:9px 22px; border-radius:25px; font-weight:600;
+      cursor:pointer; font-size:0.9rem; transition:all 0.3s;
+    }
+    .btn-login:hover { transform:translateY(-2px); }
+
+    .page-header {
+      background:linear-gradient(135deg,#001840,#003580);
+      padding:50px 40px 30px; text-align:center;
+    }
+    .page-header h1 { font-size:2.2rem; font-weight:800; margin-bottom:8px; }
+    .page-header p { color:#8ab4d8; }
+
+    .booking-layout {
+      max-width:1100px; margin:40px auto; padding:0 20px 60px;
+      display:grid; grid-template-columns:1fr 360px; gap:28px;
+    }
+
+    .card {
+      background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+      border-radius:16px; padding:28px; margin-bottom:20px;
+    }
+    .card h2 {
+      font-size:1.1rem; font-weight:700; margin-bottom:20px; padding-bottom:12px;
+      border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:10px;
+    }
+    .card h2 i { color:#ff9500; }
+
+    .train-summary {
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;
+      background:rgba(0,120,255,0.08); border:1px solid rgba(0,120,255,0.2);
+      border-radius:12px; padding:20px 24px; margin-bottom:20px;
+    }
+    .ts-col { text-align:center; }
+    .ts-time { font-size:1.6rem; font-weight:800; }
+    .ts-stn { font-size:0.8rem; color:#8ab4d8; margin-top:4px; }
+    .ts-line { flex:1; text-align:center; min-width:80px; }
+    .ts-dur { font-size:0.85rem; color:#8ab4d8; margin-bottom:8px; }
+    .line-v { height:2px; background:linear-gradient(90deg,#0078ff,#00c864); border-radius:2px; }
+    .ts-name { font-size:1rem; font-weight:600; }
+    .ts-num { font-size:0.8rem; color:#8ab4d8; }
+
+    .class-select { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:20px; }
+    .class-opt {
+      padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.15);
+      background:rgba(255,255,255,0.05); cursor:pointer; text-align:center; transition:all 0.2s;
+    }
+    .class-opt:hover { border-color:#0078ff; }
+    .class-opt.selected { border-color:#ff9500; background:rgba(255,149,0,0.1); }
+    .class-opt .cls-name { font-weight:700; font-size:0.95rem; }
+    .class-opt .cls-price { font-size:0.8rem; color:#ff9500; margin-top:4px; }
+    .class-opt .cls-avl { font-size:0.72rem; color:#00c864; }
+
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+    .form-group { display:flex; flex-direction:column; gap:8px; }
+    .form-group label { font-size:0.8rem; color:#8ab4d8; text-transform:uppercase; letter-spacing:1px; }
+    .form-group input, .form-group select {
+      background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15);
+      color:#fff; padding:12px 14px; border-radius:10px; font-size:0.95rem; outline:none; transition:all 0.3s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color:#0078ff; box-shadow:0 0 0 3px rgba(0,120,255,0.15); }
+    .form-group input::placeholder { color:#4a6a88; }
+    .form-group select option { background:#0d2050; }
+
+    .passenger-block {
+      background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px; padding:20px; margin-bottom:14px; position:relative;
+    }
+    .passenger-block h4 { font-size:0.9rem; color:#8ab4d8; margin-bottom:14px; }
+    .remove-pass {
+      position:absolute; top:14px; right:14px; background:rgba(255,50,50,0.15);
+      border:1px solid rgba(255,50,50,0.3); color:#ff6666; padding:4px 10px;
+      border-radius:6px; cursor:pointer; font-size:0.8rem; transition:all 0.2s;
+    }
+    .remove-pass:hover { background:rgba(255,50,50,0.3); }
+    .btn-add-pass {
+      width:100%; padding:11px; border:1px dashed rgba(255,255,255,0.2);
+      background:transparent; color:#8ab4d8; border-radius:10px; cursor:pointer;
+      font-size:0.9rem; transition:all 0.3s; margin-top:8px;
+    }
+    .btn-add-pass:hover { border-color:#4da6ff; color:#4da6ff; }
+
+    /* PAYMENT METHODS */
+    .payment-opts { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+    .pay-opt {
+      padding:14px; border-radius:10px; border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.04); cursor:pointer; display:flex; align-items:center;
+      gap:10px; transition:all 0.2s; font-size:0.9rem;
+    }
+    .pay-opt:hover { border-color:#0078ff; }
+    .pay-opt.selected { border-color:#ff9500; background:rgba(255,149,0,0.08); }
+    .pay-opt i { font-size:1.2rem; width:22px; text-align:center; }
+
+    /* FARE SUMMARY */
+    .fare-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.07); font-size:0.9rem;
+    }
+    .fare-row:last-child { border:none; }
+    .fare-row.total { font-size:1.1rem; font-weight:700; color:#ff9500; padding-top:16px; }
+    .fare-label { color:#8ab4d8; }
+
+    .btn-confirm {
+      width:100%; padding:16px; background:linear-gradient(135deg,#ff6b00,#ff9500);
+      color:#fff; border:none; border-radius:12px; font-size:1.1rem; font-weight:700;
+      cursor:pointer; transition:all 0.3s; margin-top:8px; letter-spacing:0.5px;
+    }
+    .btn-confirm:hover { transform:translateY(-2px); box-shadow:0 6px 25px rgba(255,107,0,0.5); }
+
+    .secure-badge {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      font-size:0.78rem; color:#8ab4d8; margin-top:12px;
+    }
+    .secure-badge i { color:#00c864; }
+
+    /* SUCCESS SCREEN */
+    .success-screen {
+      display:none; position:fixed; inset:0; background:#0a1628;
+      z-index:999; align-items:center; justify-content:center; flex-direction:column;
+    }
+    .success-screen.show { display:flex; }
+    .success-icon {
+      width:100px; height:100px; border-radius:50%; background:rgba(0,200,100,0.15);
+      border:2px solid #00c864; display:flex; align-items:center; justify-content:center;
+      font-size:3rem; color:#00c864; margin-bottom:24px; animation:pop 0.5s ease;
+    }
+    @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+    .ticket-card {
+      background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+      border-radius:20px; padding:32px 40px; text-align:center; max-width:480px; width:90%;
+    }
+    .pnr-display { font-size:2rem; font-weight:800; color:#ff9500; letter-spacing:4px; margin:12px 0; }
+    .ticket-detail { color:#8ab4d8; font-size:0.9rem; line-height:1.8; }
+    .btn-pnr { margin-top:20px; padding:12px 32px; background:linear-gradient(135deg,#003580,#0055b3); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; font-size:0.95rem; }
+
+    footer {
+      background:rgba(0,0,0,0.4); border-top:1px solid rgba(255,255,255,0.06);
+      padding:20px 40px; text-align:center; color:#5a7a99; font-size:0.85rem;
+    }
+
+    /* RAZORPAY PROCESSING OVERLAY */
+    .pay-processing {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75);
+      backdrop-filter:blur(6px); z-index:998; align-items:center; justify-content:center;
+      flex-direction:column; gap:16px;
+    }
+    .pay-processing.show { display:flex; }
+    .pay-processing .spinner {
+      width:52px; height:52px; border:4px solid rgba(255,149,0,0.2);
+      border-top-color:#ff9500; border-radius:50%;
+      animation:spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .pay-processing p { color:#cce0ff; font-size:1rem; letter-spacing:0.5px; }
+
+    @media(max-width:900px){
+      nav ul { display:none; }
+      .booking-layout { grid-template-columns:1fr; }
+      .form-row { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo" onclick="window.location.href='index.html'">
+    <i class="fas fa-train" style="font-size:2rem;color:#ff9500;"></i>
+    <div><span>IndianRail</span><small>MINISTRY OF RAILWAYS</small></div>
+  </div>
+  <ul>
+    <li><a href="index.html"><i class="fas fa-home"></i> Home</a></li>
+    <li><a href="train.html"><i class="fas fa-train"></i> Trains</a></li>
+    <li><a href="booking.html" class="active"><i class="fas fa-ticket-alt"></i> Booking</a></li>
+    <li><a href="pnr.html"><i class="fas fa-search"></i> PNR Status</a></li>
+  </ul>
+  <button class="btn-login" id="navLoginBtn" onclick="window.location.href='index.html'">
+    <i class="fas fa-user"></i> Login / Sign Up
+  </button>
+</nav>
+
+<div class="page-header">
+  <h1><i class="fas fa-ticket-alt" style="color:#ff9500;"></i> Book Ticket</h1>
+  <p>Fast, secure ticket booking with instant confirmation</p>
+</div>
+
+<div class="booking-layout">
+  <!-- LEFT COLUMN -->
+  <div>
+    <!-- Train Summary -->
+    <div class="card">
+      <h2><i class="fas fa-train"></i> Train Details</h2>
+      <div class="train-summary">
+        <div class="ts-col">
+          <div class="ts-time" id="depTime">--:--</div>
+          <div class="ts-stn" id="fromStn">--</div>
+        </div>
+        <div class="ts-line">
+          <div class="ts-dur" id="durDisplay">-- h --m</div>
+          <div class="line-v"></div>
+        </div>
+        <div class="ts-col">
+          <div class="ts-time" id="arrTime">--:--</div>
+          <div class="ts-stn" id="toStn">--</div>
+        </div>
+        <div>
+          <div class="ts-name" id="trainName">Select a Train</div>
+          <div class="ts-num" id="trainNum"></div>
+        </div>
+      </div>
+
+      <!-- Class Selection -->
+      <h2 style="margin-bottom:14px;"><i class="fas fa-chair"></i> Select Class</h2>
+      <div class="class-select" id="classSelect">
+        <div class="class-opt selected" onclick="selectClass(this,'SL',455)" data-price="455">
+          <div class="cls-name">SL</div>
+          <div class="cls-price">₹455</div>
+          <div class="cls-avl">284 avl</div>
+        </div>
+        <div class="class-opt" onclick="selectClass(this,'3A',1250)" data-price="1250">
+          <div class="cls-name">3A</div>
+          <div class="cls-price">₹1,250</div>
+          <div class="cls-avl">72 avl</div>
+        </div>
+        <div class="class-opt" onclick="selectClass(this,'2A',1950)" data-price="1950">
+          <div class="cls-name">2A</div>
+          <div class="cls-price">₹1,950</div>
+          <div class="cls-avl">36 avl</div>
+        </div>
+        <div class="class-opt" onclick="selectClass(this,'1A',3500)" data-price="3500">
+          <div class="cls-name">1A</div>
+          <div class="cls-price">₹3,500</div>
+          <div class="cls-avl">10 avl</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journey Date -->
+    <div class="card">
+      <h2><i class="fas fa-calendar-alt"></i> Journey Date</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date of Journey</label>
+          <input type="date" id="journeyDate"/>
+        </div>
+        <div class="form-group">
+          <label>Quota</label>
+          <select id="quota">
+            <option>General (GN)</option>
+            <option>Ladies (LD)</option>
+            <option>Senior Citizen (SR)</option>
+            <option>Tatkal (TQ)</option>
+            <option>Premium Tatkal (PT)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Passengers -->
+    <div class="card">
+      <h2><i class="fas fa-users"></i> Passenger Details</h2>
+      <div id="passengerForms">
+        <div class="passenger-block" id="pass_0">
+          <h4>Passenger 1</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" placeholder="As on ID card" class="p-name"/>
+            </div>
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" placeholder="Age" min="1" max="120" class="p-age"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Gender</label>
+              <select class="p-gender">
+                <option>Male</option>
+                <option>Female</option>
+                <option>Transgender</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Berth Preference</label>
+              <select class="p-berth">
+                <option>No Preference</option>
+                <option>Lower Berth</option>
+                <option>Middle Berth</option>
+                <option>Upper Berth</option>
+                <option>Side Lower</option>
+                <option>Side Upper</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-add-pass" onclick="addPassenger()" id="addPassBtn">
+        <i class="fas fa-plus"></i> Add Passenger (Max 6)
+      </button>
+    </div>
+
+    <!-- Contact -->
+    <div class="card">
+      <h2><i class="fas fa-envelope"></i> Contact Details</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mobile Number</label>
+          <input type="tel" id="contactMobile" placeholder="10-digit mobile" maxlength="10"/>
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="contactEmail" placeholder="For booking confirmation"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment -->
+    <div class="card">
+      <h2><i class="fas fa-credit-card"></i> Payment Method</h2>
+      <div class="payment-opts">
+        <div class="pay-opt selected" onclick="selectPay(this)">
+          <i class="fas fa-mobile-alt" style="color:#6c63ff;"></i> UPI / GPay
+        </div>
+        <div class="pay-opt" onclick="selectPay(this)">
+          <i class="fas fa-credit-card" style="color:#ff9500;"></i> Credit / Debit Card
+        </div>
+        <div class="pay-opt" onclick="selectPay(this)">
+          <i class="fas fa-university" style="color:#00c864;"></i> Net Banking
+        </div>
+        <div class="pay-opt" onclick="selectPay(this)">
+          <i class="fas fa-wallet" style="color:#4da6ff;"></i> IRCTC Wallet
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: Fare Summary -->
+  <div>
+    <div class="card" style="position:sticky;top:80px;">
+      <h2><i class="fas fa-receipt"></i> Fare Summary</h2>
+      <div class="fare-row">
+        <span class="fare-label">Base Fare</span>
+        <span id="baseFare">₹0</span>
+      </div>
+      <div class="fare-row">
+        <span class="fare-label">Reservation Charge</span>
+        <span>₹40</span>
+      </div>
+      <div class="fare-row">
+        <span class="fare-label">Superfast Charge</span>
+        <span id="sfCharge">₹30</span>
+      </div>
+      <div class="fare-row">
+        <span class="fare-label">GST (5%)</span>
+        <span id="gstAmt">₹0</span>
+      </div>
+      <div class="fare-row">
+        <span class="fare-label">IRCTC Service Fee</span>
+        <span>₹15</span>
+      </div>
+      <div class="fare-row total">
+        <span>Total Payable</span>
+        <span id="totalFare">₹85</span>
+      </div>
+      <button class="btn-confirm" onclick="confirmBooking()">
+        <i class="fas fa-lock"></i> Pay Securely via Razorpay
+      </button>
+      <div class="secure-badge">
+        <i class="fas fa-shield-alt"></i> Powered by Razorpay | SSL Encrypted
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>© 2024 IndianRail — Ministry of Railways. Helpline: <strong>139</strong></p>
+</footer>
+
+<!-- PAYMENT PROCESSING OVERLAY -->
+<div class="pay-processing" id="payProcessing">
+  <div class="spinner"></div>
+  <p>Opening Razorpay Secure Payment…</p>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div class="success-screen" id="successScreen">
+  <div class="success-icon"><i class="fas fa-check"></i></div>
+  <div class="ticket-card">
+    <h2 style="margin-bottom:6px;">Booking Confirmed!</h2>
+    <p style="color:#8ab4d8;font-size:0.9rem;margin-bottom:16px;">Your ticket has been booked successfully</p>
+    <div style="color:#8ab4d8;font-size:0.85rem;">PNR Number</div>
+    <div class="pnr-display" id="confirmedPNR">----------</div>
+    <div class="ticket-detail" id="ticketDetail"></div>
+    <button class="btn-pnr" onclick="window.location.href='pnr.html'">
+      <i class="fas fa-search"></i> Check PNR Status
+    </button>
+    <br/><br/>
+    <a href="index.html" style="color:#4da6ff;font-size:0.9rem;">← Back to Home</a>
+  </div>
+</div>
+
+<script>
+let selectedClass = 'SL';
+let basePerPerson = 455;
+let passengerCount = 1;
+
+// Load train info from localStorage
+window.onload = function(){
+  const tName   = localStorage.getItem('bookTrainName') || 'Sample Express';
+  const tNum    = localStorage.getItem('bookTrainNum')  || '12345';
+  const dep     = localStorage.getItem('bookDep')       || '06:30';
+  const arr     = localStorage.getItem('bookArr')       || '14:45';
+  const dur     = localStorage.getItem('bookDur')       || '8h 15m';
+  const from    = localStorage.getItem('bookFrom')      || localStorage.getItem('searchFrom') || 'New Delhi';
+  const to      = localStorage.getItem('bookTo')        || localStorage.getItem('searchTo')   || 'Howrah Jn';
+  const selCls  = localStorage.getItem('bookClass')     || 'SL';
+  const selPrice= parseInt(localStorage.getItem('bookPrice') || '455');
+  const date    = localStorage.getItem('searchDate')    || new Date().toISOString().split('T')[0];
+
+  document.getElementById('trainName').textContent  = tName;
+  document.getElementById('trainNum').textContent   = '#' + tNum;
+  document.getElementById('depTime').textContent    = dep;
+  document.getElementById('arrTime').textContent    = arr;
+  document.getElementById('fromStn').textContent    = from;
+  document.getElementById('toStn').textContent      = to;
+  document.getElementById('durDisplay').textContent = dur;
+  document.getElementById('journeyDate').value      = date;
+  document.getElementById('journeyDate').min        = new Date().toISOString().split('T')[0];
+
+  // Build class selector from real train data if available
+  const classesRaw = localStorage.getItem('bookClasses');
+  if(classesRaw){
+    try{
+      const classes = JSON.parse(classesRaw);
+      const container = document.getElementById('classSelect');
+      container.innerHTML = '';
+      classes.forEach((c, i) => {
+        const isSelected = (c.c === selCls) || (i === 0 && !selCls);
+        if(isSelected){ selectedClass = c.c; basePerPerson = c.p; }
+        container.innerHTML += `
+          <div class="class-opt${isSelected?' selected':''}" onclick="selectClass(this,'${c.c}',${c.p})" data-price="${c.p}">
+            <div class="cls-name">${c.c}</div>
+            <div class="cls-price">₹${c.p.toLocaleString('en-IN')}</div>
+            <div class="cls-avl">${c.s} avl</div>
+          </div>`;
+      });
+      // If nothing was pre-selected (selCls not found), select first
+      if(!container.querySelector('.selected')){
+        const first = container.querySelector('.class-opt');
+        if(first) first.classList.add('selected');
+        selectedClass = classes[0].c;
+        basePerPerson = classes[0].p;
+      }
+    } catch(e){
+      // Fallback: use stored price
+      if(selPrice > 0){ basePerPerson = selPrice; }
+      if(selCls)       { selectedClass = selCls; }
+    }
+  } else {
+    if(selPrice > 0){ basePerPerson = selPrice; }
+    if(selCls)       { selectedClass = selCls; }
+  }
+
+  updateFare();
+
+  const user = localStorage.getItem('loggedInUser');
+  if(user) document.getElementById('navLoginBtn').innerHTML = '<i class="fas fa-user-check"></i> ' + user;
+};
+
+function selectClass(el, cls, price){
+  document.querySelectorAll('.class-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedClass = cls;
+  basePerPerson = price;
+  updateFare();
+}
+
+function selectPay(el){
+  document.querySelectorAll('.pay-opt').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function updateFare(){
+  const base = basePerPerson * passengerCount;
+  const gst = Math.round(base * 0.05);
+  const total = base + 40 + 30 + gst + 15;
+  document.getElementById('baseFare').textContent = '₹' + base.toLocaleString('en-IN');
+  document.getElementById('gstAmt').textContent = '₹' + gst;
+  document.getElementById('totalFare').textContent = '₹' + total.toLocaleString('en-IN');
+}
+
+function addPassenger(){
+  if(passengerCount >= 6){ alert('Maximum 6 passengers per booking.'); return; }
+  passengerCount++;
+  const div = document.createElement('div');
+  div.className = 'passenger-block';
+  div.id = 'pass_' + (passengerCount-1);
+  div.innerHTML = `
+    <h4>Passenger ${passengerCount}</h4>
+    <button class="remove-pass" onclick="removePassenger(${passengerCount-1})"><i class="fas fa-times"></i> Remove</button>
+    <div class="form-row">
+      <div class="form-group"><label>Full Name</label><input type="text" placeholder="As on ID card" class="p-name"/></div>
+      <div class="form-group"><label>Age</label><input type="number" placeholder="Age" min="1" max="120" class="p-age"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Gender</label>
+        <select class="p-gender"><option>Male</option><option>Female</option><option>Transgender</option></select>
+      </div>
+      <div class="form-group"><label>Berth Preference</label>
+        <select class="p-berth"><option>No Preference</option><option>Lower Berth</option><option>Middle Berth</option><option>Upper Berth</option><option>Side Lower</option><option>Side Upper</option></select>
+      </div>
+    </div>`;
+  document.getElementById('passengerForms').appendChild(div);
+  if(passengerCount >= 6) document.getElementById('addPassBtn').style.display='none';
+  updateFare();
+}
+
+function removePassenger(idx){
+  document.getElementById('pass_' + idx).remove();
+  passengerCount--;
+  document.getElementById('addPassBtn').style.display='block';
+  updateFare();
+}
+
+// ─── Razorpay Integration ──────────────────────────────────────────────────
+const RAZORPAY_KEY = 'rzp_test_T4xnBCCwxmV322';
+
+function getTotalAmountPaise(){
+  // Mirror the fare calculation: base + 40 (reservation) + 30 (SF) + GST(5%) + 15 (service fee)
+  const base = basePerPerson * passengerCount;
+  const gst  = Math.round(base * 0.05);
+  const total = base + 40 + 30 + gst + 15;
+  return total * 100; // Razorpay expects paise (1 INR = 100 paise)
+}
+
+function validateForm(){
+  const name   = document.querySelector('.p-name').value.trim();
+  const age    = document.querySelector('.p-age').value.trim();
+  const mobile = document.getElementById('contactMobile').value.trim();
+  const email  = document.getElementById('contactEmail').value.trim();
+
+  if(!name)  { alert('Please enter the passenger name.');              return false; }
+  if(!age)   { alert('Please enter the passenger age.');               return false; }
+  if(!mobile || mobile.length !== 10 || !/^\d{10}$/.test(mobile)){
+    alert('Please enter a valid 10-digit mobile number.'); return false;
+  }
+  return { name, mobile, email };
+}
+
+function confirmBooking(){
+  const fields = validateForm();
+  if(!fields) return;
+
+  const { name, mobile, email } = fields;
+  const totalPaise = getTotalAmountPaise();
+
+  const trainName = document.getElementById('trainName').textContent;
+  const trainNum  = document.getElementById('trainNum').textContent;
+  const fromStn   = document.getElementById('fromStn').textContent;
+  const toStn     = document.getElementById('toStn').textContent;
+  const date      = document.getElementById('journeyDate').value;
+  const depTime   = document.getElementById('depTime').textContent;
+  const arrTime   = document.getElementById('arrTime').textContent;
+
+  // Brief overlay while Razorpay modal loads
+  document.getElementById('payProcessing').classList.add('show');
+
+  const options = {
+    key:          RAZORPAY_KEY,
+    amount:       totalPaise,
+    currency:     'INR',
+    name:         'Railway-X',
+    description:  `${trainName} | ${fromStn} → ${toStn} | ${selectedClass}`,
+    image:        'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+    // order_id: '<server-generated order id>',  // add this once you have a backend
+    prefill: {
+      name:    name,
+      contact: mobile,
+      email:   email || ''
+    },
+    notes: {
+      train:  trainName + ' (' + trainNum + ')',
+      route:  fromStn + ' → ' + toStn,
+      date:   date,
+      class:  selectedClass
+    },
+    theme: {
+      color: '#ff6b00'
+    },
+    modal: {
+      ondismiss: function(){
+        // User closed the payment modal without paying
+        document.getElementById('payProcessing').classList.remove('show');
+        alert('Payment cancelled. Your booking was not confirmed.');
+      }
+    },
+    handler: function(response){
+      // Payment successful — response contains razorpay_payment_id
+      document.getElementById('payProcessing').classList.remove('show');
+      onPaymentSuccess(response, { trainName, trainNum, date, fromStn, toStn, depTime, arrTime, mobile });
+    }
+  };
+
+  const rzp = new Razorpay(options);
+
+  rzp.on('payment.failed', function(response){
+    document.getElementById('payProcessing').classList.remove('show');
+    alert(
+      'Payment failed!\n' +
+      'Reason: ' + (response.error.description || 'Unknown error') + '\n' +
+      'Please try again.'
+    );
+  });
+
+  // Hide overlay and open checkout
+  setTimeout(function(){
+    document.getElementById('payProcessing').classList.remove('show');
+    rzp.open();
+  }, 600);
+}
+
+function onPaymentSuccess(response, booking){
+  // Generate PNR after confirmed payment
+  const pnr = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+
+  // Persist booking
+  const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+  bookings.push({
+    pnr,
+    trainName:   booking.trainName,
+    trainNum:    booking.trainNum,
+    date:        booking.date,
+    cls:         selectedClass,
+    from:        booking.fromStn,
+    to:          booking.toStn,
+    dep:         booking.depTime,
+    arr:         booking.arrTime,
+    passengers:  passengerCount,
+    status:      'CNF',
+    mobile:      booking.mobile,
+    paymentId:   response.razorpay_payment_id   // store Razorpay payment reference
+  });
+  localStorage.setItem('bookings', JSON.stringify(bookings));
+  localStorage.setItem('lastPNR', pnr);
+
+  // Show success screen
+  document.getElementById('confirmedPNR').textContent = pnr;
+  document.getElementById('ticketDetail').innerHTML = `
+    <strong style="color:#fff;">${booking.trainName}</strong> (${booking.trainNum})<br/>
+    ${booking.fromStn} → ${booking.toStn}<br/>
+    Date: <strong style="color:#fff;">${booking.date}</strong> |
+    Class: <strong style="color:#fff;">${selectedClass}</strong><br/>
+    Status: <strong style="color:#00c864;">CONFIRMED (CNF)</strong><br/>
+    Passengers: <strong style="color:#fff;">${passengerCount}</strong><br/>
+    <span style="font-size:0.78rem;color:#8ab4d8;">
+      Payment ID: ${response.razorpay_payment_id}
+    </span>
+  `;
+  document.getElementById('successScreen').classList.add('show');
+}
+</script>
+</body>
+</html>
